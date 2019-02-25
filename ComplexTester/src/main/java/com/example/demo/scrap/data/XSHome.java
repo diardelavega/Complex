@@ -7,8 +7,10 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -43,16 +45,27 @@ public class XSHome {
 	private List<Matches> matchesList = new ArrayList<>();
 	Map<String, Integer> compProcess = new HashMap<>();
 
-	
+	Set<String> competitionsSet;// set of competitions for a country
+	Map<String, Set<String>> ccAllreadyIn = new HashMap<String, Set<String>>();
+
 	public void countryCompetitionInit() throws IOException {
 		String baseUrl = "https://www.xscores.com/soccer/leagueresults";
 		Document doc;
+		String curentUrl;
+
+		loadCcList();
 //		String baseUrl = "C:/Users/User/Documents/CODE/Resources/XScores.html";
 ////		String baseUrl ="C:\\Users\\User\\Documents\\CODE\\Resources\\XScores.html";
 //		File input = new File(baseUrl);
 //		doc = Jsoup.parse(input, "UTF-8");
 
-		String curentUrl = baseUrl;
+		String tempstr;
+		if (cclist.size() == 0) {
+			curentUrl = baseUrl;
+			idCounter = 1;
+		} else
+			curentUrl = url;
+
 		int compCounter = 0;
 
 		try {
@@ -61,6 +74,8 @@ public class XSHome {
 			Element form = doc.getElementById("theForm");
 			Elements opts = form.getElementById("countryName").getElementsByTag("option");
 			for (Element e : opts) {
+				if (!country.equals(e.text()))// continue till the last country in
+					continue;
 				country = e.text();
 				if (!validCountry(country))
 					continue;
@@ -72,14 +87,16 @@ public class XSHome {
 				}
 				compCounter = 0;
 
+//				Set<String> competitionsSet = new HashSet<>();
 				Elements ligs = form.getElementById("leagueName").getElementsByTag("option");
 				for (Element e2 : ligs) {
-					if (compCounter >= 5)// get up to 5 competitions
+					if (compCounter >= 4)// get up to 5 competitions
 						break;
+					if (!e2.text().equals(competition))// continue till the last competition in
+						continue;
 					competition = e2.text();
 					if (!validCompetition(competition))
 						continue;
-					compProcess.put(competition, 0);
 					url = urlBuilder(curentUrl, country, competition, grup);
 					if (!curentUrl.equals(url)) {
 						curentUrl = url;
@@ -88,42 +105,44 @@ public class XSHome {
 					}
 
 					try {
-						Elements grups = form.getElementById("league1Select").getElementById("leagueName1")
-								.getElementsByTag("option");
+						Elements grups = form.getElementById("league1Select").getElementById("leagueName1").getElementsByTag("option");
 						if (grups.size() <= 1) {
 							internalData(doc);
 							continue;
 						}
 						for (Element e3 : grups) {
+							if (!e3.text().equals(grup))// continue till the last competition in
+								continue;
 							grup = e3.text();
 							if (!validCompetition(grup))
 								continue;
-							if (!grup.equals(competition)) {// if actually has a group 
+							grupProces();
+							if (!grup.equals("")) {// if actually has a group
 								url = urlBuilder(curentUrl, country, competition, grup);
 								if (!curentUrl.equals(url)) {
 									curentUrl = url;
 									doc = getDoc(curentUrl);
 									form = doc.getElementById("theForm");
 								}
-								if (compProcess.get(competition) == 1)
+								if (competitionsSet.contains(stringer(competition, grup)))
 									continue;// go to next competition
 								else
 									internalData(doc);// url with group
 							}
 						}
-						grup="";
 						if (compProcess.get(competition) == 1)
 							continue;// go to next competition
 						else
 							internalData(doc);// url with group
 					} catch (Exception e1) {
-						
+
 						log.error("Something whent wrong at the groups");
 						e1.printStackTrace();
 					}
 
 					internalData(doc);// it hasnt entered in groups
 				} // for competition elments
+				ccAllreadyIn.put(country, competitionsSet);// add country<set of comps>
 
 			} // for country elements
 
@@ -132,7 +151,80 @@ public class XSHome {
 		} finally {
 			Crepo.saveAll(cclist);
 		}
+	}
 
+	public void grupProces() {
+		if (grup.equals(competition))
+			grup = "";
+		if (grup.contains(competition))
+			grup = grup.replace(competition, "");
+
+	}
+
+	private boolean isInList(String country2, String competition2) {
+		for (CSiteCountryCompetition c : cclist) {
+			if (c.getCountry().equals(country2))
+				if (c.getCompetition().equals(competition2))
+					return true;
+		}
+		return false;
+	}
+
+	private void loadCcList() {
+		cclist = Crepo.findAll();
+		if (cclist.size() > 0) {
+			idCounter = cclist.get(cclist.size() - 1).getId();
+			url = cclist.get(cclist.size() - 1).getLink();
+			country = cclist.get(cclist.size() - 1).getCountry();
+			competition = cclist.get(cclist.size() - 1).getCompetition();
+			initMapSet();
+		}
+	}
+
+	private void initMapSet() {
+		String ctr, cmp, grp;
+		CSiteCountryCompetition c = cclist.get(0);
+		ctr = c.getCountry();
+		grp = c.getGrup();
+		cmp = c.getCompetition();
+		competitionsSet = new HashSet<>();
+		competitionsSet.add(stringer(cmp, grp));
+		for (int i = 1; i < cclist.size(); i++) {
+			c = cclist.get(i);
+
+			if (!c.getCountry().equals(ctr)) {
+				ccAllreadyIn.put(ctr, competitionsSet);
+				ctr = c.getCountry();
+				competitionsSet = new HashSet<>();
+			} else {
+				grp = c.getGrup();
+				cmp = c.getCompetition();
+				competitionsSet.add(stringer(cmp, grp));
+			}
+
+		}
+
+	}
+
+	public boolean isCountryAllreadyIn(String ctr) {
+		if (ccAllreadyIn.get(ctr) != null)
+			return true;
+		return false;
+	}
+
+	public boolean isaCompetitionGroupAllreadyIn(String ctr, String cmp, String grp) {
+		Set<String> tmpset = ccAllreadyIn.get(ctr);
+		if (tmpset != null)
+			if (tmpset.contains(stringer(cmp, grp)))
+				return true;
+		return false;
+	}
+
+	public String stringer(String comp, String grp) {
+		if (!grp.equals(""))
+			return comp + "_" + grp;// save to the set of comps
+		else
+			return comp;
 	}
 
 	public Document getDoc(String url) {
@@ -159,7 +251,6 @@ public class XSHome {
 
 	private void internalData(Document doc) {
 //		WebElement parent = doc.findElement(By.id("scoretable"));
-		compProcess.put(competition, 1);
 
 		Element table = doc.getElementById("scoretable");
 		Elements divs = table.select("div[class='score_row round_header score_header'], "/* round */
@@ -255,9 +346,12 @@ public class XSHome {
 		cs.setValid(1);
 		cs.setInsDat(LocalDateTime.now());
 		log.info(cs.toString());
-//		cclist.add(cs);
 		Crepo.save(cs);
 
+		if (!grup.equals(""))
+			competitionsSet.add(competition + "_" + grup);// save to the set of comps
+		else
+			competitionsSet.add(competition);
 		idCounter++;
 
 	}
