@@ -9,12 +9,12 @@ import javax.persistence.MappedSuperclass;
 @MappedSuperclass
 public class BaseCountryCompetition {
 	@Id
-	private int id;
+	private Integer id;
 	private String country;
 	private String competition;
 	private String link;
-	private short valid;
-	private short level;
+	private Short valid;
+	private Short level;
 	@Column(name="insert_dat")
 	private LocalDateTime insDat;
 

@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -17,7 +18,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.before.jobs.ConfigProperties;
+import com.example.demo.before.jobs.StructLoader;
 import com.example.demo.mar.cod.entity.siteA.CCRepo;
+import com.example.demo.mar.cod.entity.sites.ASiteCountryCompetition;
+import com.example.demo.mar.cod.entity.sites.ASiteRepo;
 import com.example.demo.scrap.data.SPHome;
 import com.example.demo.scrap.data.SWay;
 import com.example.demo.scrap.data.XSHome;
@@ -27,10 +31,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @SpringBootApplication
 public class ComplexTesterApplication {
 
+	Logger log = LoggerFactory.getLogger(this.getClass());
+
 	public static void main(String[] args) {
 		SpringApplication.run(ComplexTesterApplication.class, args);
 	}
 
+	@Autowired
+	StructLoader sl; 
+	
 	@Autowired
 ////	SPHome sp ;
 //	SWay sp;
@@ -41,6 +50,13 @@ public class ComplexTesterApplication {
 	CommandLineRunner init() {
 		try {
 			System.out.println(conpro.toString());
+			
+//			List<ASiteCountryCompetition> temp = asrepo.findAll();
+			
+//			StructLoader sl = new StructLoader();
+			sl.aSiteCountryCompLoad();
+			log.info("size = {}", sl.getaSiteCountryCompStruct().length);
+			
 			
 //			sp.countryCompetitionInit();
 //			Logger log = LoggerFactory.getLogger(ComplexTesterApplication.class);
@@ -79,12 +95,12 @@ public class ComplexTesterApplication {
 //				log.info("-----------------------{}", type);
 //				log.info("");
 //			}
-			
+
 //			log.info("{}", aa);
 //			log.info("{}", aa.asText());
 //			log.info("{}", aa.textValue());
 //			log.info("{}", aa.toString());
-			
+
 //			System.out.println("\n\n\n  " + aa + "  \n\n\n");
 		} catch (Exception e) {
 			e.printStackTrace();
