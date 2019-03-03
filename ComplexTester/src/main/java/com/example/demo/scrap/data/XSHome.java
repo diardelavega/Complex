@@ -52,6 +52,16 @@ public class XSHome {
 		String baseUrl = "https://www.xscores.com/soccer/leagueresults";
 		Document doc;
 		String curentUrl;
+		boolean grupFlag = false;// signal weather it was processed in grup phase
+		boolean countryAllreadyInSkipper = false, compAllreadyInSkipper = false, grupAllreadyInSkipper = false;// as a
+																												// signal
+																												// to
+																												// show
+																												// which
+																												// comps
+																												// are
+																												// allready
+																												// in
 
 		loadCcList();
 //		String baseUrl = "C:/Users/User/Documents/CODE/Resources/XScores.html";
@@ -74,8 +84,16 @@ public class XSHome {
 			Element form = doc.getElementById("theForm");
 			Elements opts = form.getElementById("countryName").getElementsByTag("option");
 			for (Element e : opts) {
-				if (!country.equals(e.text()))// continue till the last country in
-					continue;
+				if (ccAllreadyIn.size() > 0)
+					if (!countryAllreadyInSkipper) {
+						if (!country.equals(e.text()))// continue till the last country in
+							continue;
+						else {
+							countryAllreadyInSkipper = true;
+							continue;
+						}
+					}
+
 				country = e.text();
 				if (!validCountry(country))
 					continue;
@@ -85,15 +103,29 @@ public class XSHome {
 					doc = getDoc(curentUrl);
 					form = doc.getElementById("theForm");
 				}
-				compCounter = 0;
+				compCounter = ccAllreadyIn.get(country) != null ? ccAllreadyIn.get(country).size() : 0;
 
 //				Set<String> competitionsSet = new HashSet<>();
-				Elements ligs = form.getElementById("leagueName").getElementsByTag("option");
+				Element leagueElem = null;
+				try {
+					leagueElem = form.getElementById("leagueName");
+				} catch (Exception e4) {
+					e4.printStackTrace();
+				}
+				if(leagueElem==null)
+					continue;
+				Elements ligs = leagueElem.getElementsByTag("option");
 				for (Element e2 : ligs) {
 					if (compCounter >= 4)// get up to 5 competitions
 						break;
-					if (!e2.text().equals(competition))// continue till the last competition in
-						continue;
+					if (compCounter > 0)
+						if (!compAllreadyInSkipper)
+							if (!e2.text().equals(competition))// continue till the last competition in
+								continue;
+							else {
+								compAllreadyInSkipper = true;
+								continue;
+							}
 					competition = e2.text();
 					if (!validCompetition(competition))
 						continue;
@@ -105,18 +137,25 @@ public class XSHome {
 					}
 
 					try {
-						Elements grups = form.getElementById("league1Select").getElementById("leagueName1").getElementsByTag("option");
+						Elements grups = form.getElementById("league1Select").getElementById("leagueName1")								.getElementsByTag("option");
 						if (grups.size() <= 1) {
 							internalData(doc);
 							continue;
 						}
 						for (Element e3 : grups) {
-							if (!e3.text().equals(grup))// continue till the last competition in
-								continue;
+							if (!grupAllreadyInSkipper) {
+								if (!e3.text().equals(grup))// continue till the last competition in
+									continue;
+								else {
+									grupAllreadyInSkipper = true;
+									continue;
+								}
+							}
+
 							grup = e3.text();
 							if (!validCompetition(grup))
 								continue;
-							grupProces();
+							grup = grup.replace(competition, "");
 							if (!grup.equals("")) {// if actually has a group
 								url = urlBuilder(curentUrl, country, competition, grup);
 								if (!curentUrl.equals(url)) {
@@ -124,23 +163,30 @@ public class XSHome {
 									doc = getDoc(curentUrl);
 									form = doc.getElementById("theForm");
 								}
-								if (competitionsSet.contains(stringer(competition, grup)))
+								if (ccAllreadyIn.get(country).contains(stringer(competition, grup)))
 									continue;// go to next competition
-								else
+								else {
 									internalData(doc);// url with group
+									grupFlag = true;
+									grup = "";// reset group to empty
+									continue;
+								}
 							}
-						}
-						if (compProcess.get(competition) == 1)
-							continue;// go to next competition
-						else
-							internalData(doc);// url with group
+						} // for of grups
 					} catch (Exception e1) {
-
 						log.error("Something whent wrong at the groups");
 						e1.printStackTrace();
 					}
-
-					internalData(doc);// it hasnt entered in groups
+					if (grupFlag) {
+						grupFlag = false;
+						continue;
+					} else {
+						if (ccAllreadyIn.get(country) != null) {
+							if (ccAllreadyIn.get(country).contains(stringer(competition, grup)))
+								continue;// go to next competition
+						} else// if it was not processed in the grup section
+							internalData(doc);// url with group
+					}
 				} // for competition elments
 				ccAllreadyIn.put(country, competitionsSet);// add country<set of comps>
 
@@ -154,10 +200,7 @@ public class XSHome {
 	}
 
 	public void grupProces() {
-		if (grup.equals(competition))
-			grup = "";
-		if (grup.contains(competition))
-			grup = grup.replace(competition, "");
+		grup = grup.replace(competition, "");
 
 	}
 
@@ -201,9 +244,8 @@ public class XSHome {
 				cmp = c.getCompetition();
 				competitionsSet.add(stringer(cmp, grp));
 			}
-
 		}
-
+		ccAllreadyIn.put(ctr, competitionsSet);
 	}
 
 	public boolean isCountryAllreadyIn(String ctr) {
@@ -348,10 +390,7 @@ public class XSHome {
 		log.info(cs.toString());
 		Crepo.save(cs);
 
-		if (!grup.equals(""))
-			competitionsSet.add(competition + "_" + grup);// save to the set of comps
-		else
-			competitionsSet.add(competition);
+		competitionsSet.add(stringer(competition, grup));// save to the set of comps
 		idCounter++;
 
 	}

@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.demo.before.jobs.ConfigProperties;
 import com.example.demo.mar.cod.entity.siteA.CCRepo;
 import com.example.demo.scrap.data.SPHome;
 import com.example.demo.scrap.data.SWay;
@@ -33,12 +34,15 @@ public class ComplexTesterApplication {
 	@Autowired
 ////	SPHome sp ;
 //	SWay sp;
-	XSHome sp;
-//	
+//	XSHome sp;
+	ConfigProperties conpro;
+
 	@Bean
 	CommandLineRunner init() {
 		try {
-			sp.countryCompetitionInit();
+			System.out.println(conpro.toString());
+			
+//			sp.countryCompetitionInit();
 //			Logger log = LoggerFactory.getLogger(ComplexTesterApplication.class);
 //			String br1 = "{\"level\":\"2\"}", br2 = "{\"area_id\":\"9\",\"level\":2,\"item_key\":\"area_id\"}";
 //

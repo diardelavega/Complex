@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class SeleniumDriver {
 
 	
-	public WebDriver getDriver(String url) {
+	public static WebDriver getDriver(String url) {
 		String chromeDriverPath = "src/main/resources/static/chromedriver.exe";
 		System.setProperty("webdriver.chrome.driver", chromeDriverPath);
 		ChromeOptions options = new ChromeOptions();
